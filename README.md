@@ -1,7 +1,10 @@
-Vector Tiles using Open Source Tools: For Pleasure and Profit
+Making Vector Tiles: For Pleasure and Profit
 ================
+
 Dr Malcolm Morgan, Research Fellow in Transport and Spatial Analysis,
 Institute for Transport Studies, University of Leeds
+
+Dr Layik Hama, Leeds Institute for Data Analytics, University of Leeds
 
 ## Summary
 
@@ -82,7 +85,7 @@ software. If you do not have a Linux computer, you can.
 
 1.  Create a virtual machine using software such as [Virtual
     Box](https://www.virtualbox.org/)
-2.  On Windows 10, use the [Windows Subsystem for
+2.  On Windows 10 or 11, use the [Windows Subsystem for
     Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
 3.  Some of the tools are supported on Mac if you have a Mac check
     documentation
@@ -94,15 +97,22 @@ This tutorial uses a range of different software; not all software is
 required for every workflow. The flowcharts below highlight which tools
 are needed to perform each task.
 
-**[tippecanoe](https://github.com/mapbox/tippecanoe)** (essential)
+**[tippecanoe](https://github.com/felt/tippecanoe)** (essential)
 
-Tippecanoe is free software from Mapbox which converts `.geojson` files
-into vector tiles. It is also supported on Mac.
+Tippecanoe was originally free software from Mapbox which converts `.geojson` 
+files into vector tiles. However Mapbox stopped updating its free opensource 
+version around 2020 and Erica Fischer at Felt now supports this updated and 
+improved version. It is also supported on Mac.
 
-**[mb-util](https://github.com/mapbox/mbutil)** (reccomended)
+**[mb-util](https://github.com/mapbox/mbutil)** (recommended)
 
 Tippecanoe is free software from Mapbox which converts `.mbtiles` files
 into a folder of `.pbf` vector tiles.
+
+**[PMTiles](https://github.com/protomaps/PMTiles)** (optional)
+
+PMTiles can convert `.mbtiles` to `.pmtiles` (see below for detials). However in 
+this tutorial we will create `.pmtiles` directly with `tippecanoe`.
 
 **A text editor** (essential)
 
@@ -129,14 +139,14 @@ Windows, Mac, and Linux.
 
 **[tilemaker](https://github.com/systemed/tilemaker)** (optional)
 
-If you wish to generate your own basemap tiles.
+If you wish to generate your own basemap tiles form the OpenStreetMap
 
 **[openmaptiles](https://github.com/openmaptiles/openmaptiles)**
 (optional)
 
 
-Alterative way to make your own basemap tiles. Alteritvily you can
-download premade tiles which may be free or may require a one-off
+Alternative way to make your own basemap tiles. Alternativly you can
+download pre-made tiles which may be free or may require a one-off
 payment. openmaptiles is available for Windows, Mac, and Linux (see
 below).
 
@@ -146,22 +156,51 @@ below).
 and Linux.
 
 
+### PMtiles - The new kid on the block
+
+Vector tiles came to prominence with the Mapbox vector tiles specification and 
+the `.mbtiles` format. However the mapox implementation has a downside, you can
+either:
+
+1. Host a single `.mbtiles` file using specialist tile hosting software
+2. Host millions of tiny `.pbf` files on any file server. But you may be charged
+a small per file fee for by you web host for each file, and any updates would 
+require a re-upload of millions of files.
+
+**Note** many file hosts (Google Cloud, AWS, Azure etc.) charge transfer fees. 
+They are usually negligible (e.g. $0.065/10,000 files), but when you have millions 
+of tiny files they can be more significant than the per GB monthly charges for storage.
+
+PMtiles solves this trade-off problem with the `.pmtiles` format, which is a single
+file that does not require specialist software. Only the ability to modify the 
+servers HTTP headers.
+
+We recommend using PMtiles as the best solution, and have updated this tutorial 
+accordingly. However other method are retained for completeness and special cases.
+
 ## Part 1: Making Vector Tiles
 
 
-This diagram shows the various ways in which Vector Tiles can be created and then hosted:
+This diagram shows the various ways in which Vector Tiles can be created and 
+then hosted. The recommended route using `.pmtiles` is highlighted in green.
 
 <img src='images/gen_flowchart.png'/>
 
-### To gzip or not to gzip
+### (Reccomended) hosting with PMtiles
 
+We recommend using the PMTiles route. But to do so you must establish if you 
+can modify the HTTP headers of your server. A full explanation is provided later 
+but you need to make the decision on hosting before proceeding.
 
-Before generating the vector tiles, you must make a decision on if they
-will be gzipped or not. [gzip](https://en.wikipedia.org/wiki/Gzip) is a
-compression standard which is supported by all modern browsers. The
-compressed `.pbf` files are about 25% of the size of the uncompressed
-ones. This saves storage space on your server and speeds up the download
-of the tiles, giving your users a better experience.
+### (Optional) To gzip or not to gzip
+
+If you are opting for a folder of `.pbf` files as your hosting solution, 
+you must make a decision on if they will be gzipped or not. 
+[gzip](https://en.wikipedia.org/wiki/Gzip) is a compression standard which 
+is supported by all modern browsers. The compressed `.pbf` files are about 
+25% of the size of the uncompressed ones. This saves storage space on your 
+server and speeds up the download of the tiles, giving your users a better 
+experience.
 
 
 So gzipped `.pbf` files are better. But to use the gzipped files, you
@@ -212,12 +251,17 @@ commercial projects.
 
 The download will be a single `.mbtiles` file.
 
-To convert to a folder of gzipped tiles, we will use **mb-util**:
+To convert the `.mbtiles` file to `.pmtiles` you can use **pmtiles**:
+
+``` sh
+pmtiles convert countries.mbtiles countries.pmtiles
+```
+
+Or to convert to a folder of gzipped tiles, we will use **mb-util**:
 
 ``` sh
 ./mb-util --image_format=pbf countries.mbtiles countries
 ```
-
 
 you can convert the gzipped files to ungzipped files with the following
 bash commands:
@@ -228,7 +272,7 @@ find . -type f -exec mv '{}' '{}'.pbf \;
 ```
 
 
-#### Generating your own Basemap
+#### Generating your own Basemap from the OpenStreetMap
 
 To generate your own basemap you will need to install Docker and
 `openmaptiles` there are installation instructions
@@ -241,11 +285,24 @@ guide. OpenMapTiles uses
 build a tile layer for any one of those regions with minimal effort.
 OpenMapTitles also draws in some low-resolution data for the rest of the
 world, so your map does not appear to be floating in a sea of nothing.
-\#\#\# Making Tiles from your own Data
 
 #### Using pre-made OS Open Zoomstack
 
-If your project is only in Great Britain you can used the Ordnance Survey [Open Zoomstack](https://www.ordnancesurvey.co.uk/business-government/products/open-zoomstack) which provides a MBTitles file or a GeoPackage of the data. We used the Zoomstack as the basemap in the [Place-Based Carbon Calculator](https://www.carbon.place/). In this case we built a custom tileset from the GeoPackage data as we found the performance of the tileset provided by the OS to be poor. This is because the Open Zoomstack contains a lot of data, and for our purposes a simpler map was preferable. So we extracted geojson files from each of the layers in the Geopackage file and made several modifications.
+If your project is only in Great Britain you can used the Ordnance Survey [Open Zoomstack](https://www.ordnancesurvey.co.uk/business-government/products/open-zoomstack) 
+which provides a `.mbtiles` file. See the section on OpenMapTiles for istructions
+on converting to other formats.
+
+
+#### Making a basemap from your own Data
+
+In the [Carbon & Place](https://www.carbon.place/) website we used a custom version
+of the OS Open Zoomstack. Which provides a good example of how to build any 
+custom base map.
+
+Instead of downloading the `.mbtiles` vsesion download the `.gpkg` version.
+GeoPackage is a common GIS format that we can open and edit in QGIS.
+
+To make the custom basemap we made several changes.
 
 1. Removed some layers that we did not need such as the contour lines and building outlines (this reduced file sizes significantly)
 2. Created high/medium/low version of some layers and filtered out some data for the lower zoom levels. For example removing minor roads from the low zoom levels
@@ -256,14 +313,14 @@ If your project is only in Great Britain you can used the Ordnance Survey [Open 
 
 To save disk space the sea polygon is only close to the UK coastline on high zoom levels. We designed this to be hard to spot but if you zoom into the Isle of Mann close enough the Sea disappears and everything becomes the default land background.
 
+After making our changes we saved each layer of the basemap as a separate `.geojson`.
 
-An example of the Tippecanoe command to make the basemap tileset.
+Now we can use **tippecanoe** to make a single `.pmtiles` file with muliple layers.
 
 ```sh
-tippecanoe --output-to-directory=OSzoomStackSeamMed  --attribution=OS --minimum-zoom=9 --maximum-zoom=11 --drop-smallest-as-needed --simplification=10 --force boundaries.geojson foreshore.geojson greenspace.geojson sea.geojson names.geojson national_parks.geojson rail.geojson railway_stations.geojson roads.geojson surfacewater.geojson urban_areas.geojson woodland.geojson
-
+tippecanoe --output basemap.pmtiles  --attribution=OS boundaries.geojson foreshore.geojson greenspace.geojson sea.geojson names.geojson national_parks.geojson rail.geojson railway_stations.geojson roads.geojson surfacewater.geojson urban_areas.geojson woodland.geojson
 ```
-Notice how we can list multiple geojson files to combine them into a single tileset. Also notice that when making different tilesets for different ranges you need to put each into a separate folder. Otherwise tippecanoe will delete the old tileset when you create a new one.
+Notice how we can list multiple geojson files to combine them into a single tileset
 
 #### Converting your data to GeoJSON
 
@@ -318,7 +375,15 @@ ogr2ogr -f GeoJSON msoa.geojson /tmp/Counties_and_UA/Counties_and_Unitary_Author
 
 #### Converting GeoJSON to Vector Tiles
 
-##### Converting to a single mbtiles file
+##### (Reccomended) Converting to a single pmtiles file
+
+We will use **tippecanoe** to make the `.pmtiles` file.
+
+``` sh
+tippecanoe -o out.pmtiles -zg --drop-densest-as-needed msoa.geojson
+```
+
+##### (Optional) Converting to a single mbtiles file
 
 
 Let us convert this to a format called `.mbtiles` which is essentially
@@ -332,7 +397,7 @@ repo/package to achieve this.
 tippecanoe -zg -o out.mbtiles --drop-densest-as-needed msoa.geojson
 ```
 
-##### Converting to a folder of pbf files
+##### (Optional) Converting to a folder of pbf files
 
 
 Converting to a folder of `.pbf` tiles with gzip
@@ -424,7 +489,7 @@ less suited to hosting datasets that you expect to update regularly.
 
 Once you have created your tiles simply upload them to your server using
 an FTP client such as [Filezilla](https://filezilla-project.org/). We
-suggest you cteate a `tiles` folder on your server and keep each tileset
+suggest you create a `tiles` folder on your server and keep each tileset
 in its own subfolder.
 
 
