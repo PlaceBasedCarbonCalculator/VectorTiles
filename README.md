@@ -313,6 +313,9 @@ To make the custom basemap we made several changes.
 
 To save disk space the sea polygon is only close to the UK coastline on high zoom levels. We designed this to be hard to spot but if you zoom into the Isle of Mann close enough the Sea disappears and everything becomes the default land background.
 
+
+<img src='images/ilse-of-man.gif'/>
+
 After making our changes we saved each layer of the basemap as a separate `.geojson`.
 
 Now we can use **tippecanoe** to make a single `.pmtiles` file with muliple layers.
