@@ -46,6 +46,7 @@ number of tiles by a factor of 4. Tilesets typically go down to about
 zoom level 19 at which point one tile covers an area about the size of a
 single building.
 
+
 <img src='images/tiles.png'/>
 
 Raster tiles have two significant limitations: 1. They are static – you
@@ -72,6 +73,7 @@ Thus they can be dynamically rendered client side using JavaScript, and
 you can even perfom calualtions on varaibles such as finidng the ratio
 of two variables.
 
+
 ## Prerequisites
 
 Most of the tools in this tutorial are Linux command line applications.
@@ -84,6 +86,7 @@ software. If you do not have a Linux computer, you can.
     Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
 3.  Some of the tools are supported on Mac if you have a Mac check
     documentation
+
 
 ### Software
 
@@ -111,7 +114,7 @@ required.
 This tutorial was written with [Apache](https://httpd.apache.org/) in
 mind, but any modern HTML server will do.
 
-**An FTP client** (essential)
+**An (S)FTP client** (essential)
 
 You will need to upload files to your server. Usually, this is done with
 an FTP client such as [Filezilla](https://filezilla-project.org/)
@@ -123,12 +126,14 @@ into the `.geojson` format. This can be done in a wide range of free GIS
 software such a [QGIS](https://qgis.org/en/site/). QGIS is available for
 Windows, Mac, and Linux.
 
+
 **[tilemaker](https://github.com/systemed/tilemaker)** (optional)
 
 If you wish to generate your own basemap tiles.
 
 **[openmaptiles](https://github.com/openmaptiles/openmaptiles)**
 (optional)
+
 
 Alterative way to make your own basemap tiles. Alteritvily you can
 download premade tiles which may be free or may require a one-off
@@ -140,11 +145,16 @@ below).
 **openmaptiles** requires docker. Docker is available for Windows, Mac,
 and Linux.
 
-## Part 1: Making Vector Titles
+
+## Part 1: Making Vector Tiles
+
+
+This diagram shows the various ways in which Vector Tiles can be created and then hosted:
 
 <img src='images/gen_flowchart.png'/>
 
 ### To gzip or not to gzip
+
 
 Before generating the vector tiles, you must make a decision on if they
 will be gzipped or not. [gzip](https://en.wikipedia.org/wiki/Gzip) is a
@@ -153,6 +163,7 @@ compressed `.pbf` files are about 25% of the size of the uncompressed
 ones. This saves storage space on your server and speeds up the download
 of the tiles, giving your users a better experience.
 
+
 So gzipped `.pbf` files are better. But to use the gzipped files, you
 must modify the [HTTP
 Headers](https://en.wikipedia.org/wiki/List_of_HTTP_header_fields) to
@@ -160,10 +171,12 @@ include:
 
     Content-Encoding: gzip
 
+
 This will tell the user’s browser that the files are gzipped and to
 ungzip them before trying to use them. Without this HTTP Header, the
 browser will be unable to read and render the tiles. So gzipping is only
 a good idea if you are able to modify the HTTP Headers on your server.
+
 
 The sections below will outline how to generate tiles with and without
 gzipping and how to modify HTTP headers when using
@@ -174,13 +187,16 @@ server software, check for a tutorial on how to modify HTTP headers.
 
 To have a basemap, you have three main choices:
 
+
 1.  Get your basemap from a 3rd party service such as Mapbox, depending
     on your usage you may need to pay.
 2.  Get premade tiles from OpenMapTiles, free for non-profit uses but a
     $1000 fee for commercial projects
 3.  Generate your own tiles, free but most difficult.
 
-#### Using OpenMapTiles
+
+#### Using pre-made OpenMapTiles
+
 
 You can sign up for a free account at www.openmaptiles.com
 
@@ -193,13 +209,15 @@ OpenMapTiles allow for free download of tiles for education and
 evaluation purposes but charge up to $1,000 for a onetime download for
 commercial projects.
 
+
 The download will be a single `.mbtiles` file.
 
-To convert to a folder of gzipped tiles, we will use **mb-util**
+To convert to a folder of gzipped tiles, we will use **mb-util**:
 
 ``` sh
 ./mb-util --image_format=pbf countries.mbtiles countries
 ```
+
 
 you can convert the gzipped files to ungzipped files with the following
 bash commands:
@@ -208,6 +226,7 @@ bash commands:
 gzip -d -r -S .pbf *
 find . -type f -exec mv '{}' '{}'.pbf \;
 ```
+
 
 #### Generating your own Basemap
 
@@ -224,6 +243,28 @@ OpenMapTitles also draws in some low-resolution data for the rest of the
 world, so your map does not appear to be floating in a sea of nothing.
 \#\#\# Making Tiles from your own Data
 
+#### Using pre-made OS Open Zoomstack
+
+If your project is only in Great Britain you can used the Ordnance Survey [Open Zoomstack](https://www.ordnancesurvey.co.uk/business-government/products/open-zoomstack) which provides a MBTitles file or a GeoPackage of the data. We used the Zoomstack as the basemap in the [Place-Based Carbon Calculator](https://www.carbon.place/). In this case we built a custom tileset from the GeoPackage data as we found the performance of the tileset provided by the OS to be poor. This is because the Open Zoomstack contains a lot of data, and for our purposes a simpler map was preferable. So we extracted geojson files from each of the layers in the Geopackage file and made several modifications.
+
+1. Removed some layers that we did not need such as the contour lines and building outlines (this reduced file sizes significantly)
+2. Created high/medium/low version of some layers and filtered out some data for the lower zoom levels. For example removing minor roads from the low zoom levels
+3. Produced three different tilesets for high/medium/low zoom levels and then combined them into a single tileset.
+4. Created a custom sea layer. In the OS data the sea is assumed to be the background with a layer used to define the location of the land. For our use case, users would mostly be looking at the land, so we chose to invert this and create a tileset where the land was the background and the sea was specified. We also added a low resolution coastline for Europe so that Great Britain was mapped in context. 
+
+<img src='images/pbcc.jpg'/>
+
+To save disk space the sea polygon is only close to the UK coastline on high zoom levels. We designed this to be hard to spot but if you zoom into the Isle of Mann close enough the Sea disappears and everything becomes the default land background.
+
+
+An example of the Tippecanoe command to make the basemap tileset.
+
+```sh
+tippecanoe --output-to-directory=OSzoomStackSeamMed  --attribution=OS --minimum-zoom=9 --maximum-zoom=11 --drop-smallest-as-needed --simplification=10 --force boundaries.geojson foreshore.geojson greenspace.geojson sea.geojson names.geojson national_parks.geojson rail.geojson railway_stations.geojson roads.geojson surfacewater.geojson urban_areas.geojson woodland.geojson
+
+```
+Notice how we can list multiple geojson files to combine them into a single tileset. Also notice that when making different tilesets for different ranges you need to put each into a separate folder. Otherwise tippecanoe will delete the old tileset when you create a new one.
+
 #### Converting your data to GeoJSON
 
 The tools we use to create Vector Tiles require the input data to be in
@@ -235,7 +276,13 @@ Converting a shapefile into tile:
 An example file in question would be the UK MSOA boundaries which are
 roughly \~600M in size when converted to plain `.geojson` file.
 
-This could be achieved in R for instance:
+If you have GDAL [installed](https://tracker.debian.org/pkg/gdal) then the following command will achieve this, once you have downloaded the shapefile.
+
+```sh
+ogr2ogr -f GeoJSON msoa.geojson /tmp/Counties_and_UA/Counties_and_Unitary_Authorities_December_2017_Full_Extent_Boundaries_in_UK_WGS84.shp -lco RFC7946=YES
+```
+
+Downloading and converting the data can also be achieved in R. For instance:
 
 ``` r
 # get LAs
@@ -255,6 +302,7 @@ msoa = st_read(file.path(folder, msoa_shape))
 st_write(msoa, "~/Downloads/msoa.geojson")
 ```
 
+
 We have not tested Python but there has to be
 [packages](https://pypi.org/project/pyshp/1.1.7/) that can read
 shapefiles and interpret them into GeoJSON. If you have GDAL
@@ -267,9 +315,11 @@ as:
 ogr2ogr -f GeoJSON msoa.geojson /tmp/Counties_and_UA/Counties_and_Unitary_Authorities_December_2017_Full_Extent_Boundaries_in_UK_WGS84.shp -lco RFC7946=YES
 ```
 
+
 #### Converting GeoJSON to Vector Tiles
 
 ##### Converting to a single mbtiles file
+
 
 Let us convert this to a format called `.mbtiles` which is essentially
 an SQLite zipped formatted the way Mapbox (hence the mb part) can read
@@ -284,8 +334,10 @@ tippecanoe -zg -o out.mbtiles --drop-densest-as-needed msoa.geojson
 
 ##### Converting to a folder of pbf files
 
+
 Converting to a folder of `.pbf` tiles with gzip
 compression
+
 
 ``` sh
 tippecanoe -zg --output-to-directory=mytiles --drop-densest-as-needed msoa.geojson
@@ -301,6 +353,7 @@ tippecanoe -zg --output-to-directory=mytiles --drop-densest-as-needed --no-tile-
 
 #### Checking your vector tiles
 
+
 If you have QGIS installed the [Vector Tiles
 Reader](https://github.com/geometalab/Vector-Tiles-Reader-QGIS-Plugin/)
 plugin is an easy way to view your finished tiles. Simply install the
@@ -313,11 +366,13 @@ On the Directory tab use the brows button to find the location of your
 folder of Vector Tiles, or if you have created a single MBTiles files
 use the MBTiles tab.
 
+
 <img src='images/qgis.png'/>
 
 You do not need to specify a Style JSON URL to view the tiles.
 
 //TODO use the mbtile viewer to view the tiles we generated.
+
 
 We [can now serve](mapbox.mapbox-streets-v8) the `.mbtiles` in a Mapbox
 JS instance. The drawback here, is an initial lag in downloading the
@@ -325,7 +380,9 @@ whole file by the client (browser), the pro is, as you probably guess,
 is this happens only once. It was perhaps developed for mobile apps and
 works perfectly for such cases.
 
+
 //TODO add html example with mbtiles //TODO test servers and CORS
+
 
 However, not everyone can do this as the size of the package could be
 large and slower connection clients would be punished harshly. It is
@@ -336,7 +393,8 @@ Protocol buffers (pbf) is a language-neutral
 [serialaization](https://developers.google.com/protocol-buffers) by
 Google.
 
-We can do this by:
+
+We can do this as follows:
 
 ## Part 2: Hosting Vector Tiles
 
@@ -348,6 +406,7 @@ When hosting vector tiles on your own server, you have two main choices:
     your server.
 
 ### Hosting using a mbtiles file
+
 
 See documentation at <https://openmaptiles.org/docs/>
 
@@ -368,6 +427,7 @@ an FTP client such as [Filezilla](https://filezilla-project.org/). We
 suggest you cteate a `tiles` folder on your server and keep each tileset
 in its own subfolder.
 
+
 #### Modifying HTML Headers
 
 There are two reasons you may want to modify HTML headers.
@@ -376,9 +436,11 @@ There are two reasons you may want to modify HTML headers.
 2.  To enable
     [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing)
 
+
 Cross Origin Resouce Sharing (CORS) is required if you wish to host the
 tiles on a different server from the one that will serve your website.
 Common use cases are:
+
 
 1.  You are using separate servers for tile hosting (e.g. Google Cloud
     or Amazon S3) than for web hosting.
@@ -389,20 +451,31 @@ Common use cases are:
     `.htaccess` file will apply to all the subfolders below the file, so
     storing all your tiles in a single folder is a good idea.
 
-**Example folder structure**
 
-    /index.html
-        /tiles
-        .htaccess
-            /basemap
-            /mytiles1
-            /mytiles2
+**Example folder structure** 
+```
+/index.html
+	/tiles
+		.htaccess
+		/basemap
+		/mytiles1
+		/mytiles2
+```
 
 **Example `.htaccess` file**
+```
+Header add Access-Control-Allow-Origin "*"
+Header add Access-Control-Allow-Methods: "GET"
+Header set Content-Encoding: gzip
+```
+If your `.htaccess` file is not working you may need to [enable this feature](https://stackoverflow.com/questions/12202387/htaccess-not-working-apache) in your server config file.
 
-    Header add Access-Control-Allow-Origin "*"
-    Header add Access-Control-Allow-Methods: "GET, POST"
-    Header set Content-Encoding: gzip
+Note that setting Header add Access-Control-Allow-Origin to "*" means any website can view your tiles. You may wish to opt to specify which sites can access your tiles.
+
+### Hosting fonts
+
+If your map includes text tables, such as road or country names, you will need to provide the fonts you wish to use. You can download a selection of fonts [from this repo](https://github.com/ITSLeeds/VectorTiles/releases) and upload them to your server in a folder called `fonts`. You will need to unzip the files and upload them in the file structure shown below.
+
 
 If your `.htaccess` file is not working you may need to [enable this
 feature](https://stackoverflow.com/questions/12202387/htaccess-not-working-apache)
@@ -431,6 +504,7 @@ files and uploaded them in the file structure shown below.
 
 ## Part 3: Visualising Vector Tiles
 
+
 There are many ways to view vector tiles, but when building a website,
 we recommend using Mapbox GL JS. Mapbox GL JS is a Javascript library
 which takes advantage of [WebGL](https://en.wikipedia.org/wiki/WebGL)
@@ -456,6 +530,7 @@ tiles and supporting multiple vector tile layers.
 This example is based on the Mapbox getting started
 [example](https://docs.mapbox.com/mapbox-gl-js/example/simple-map/).
 
+
 ``` html
 <!DOCTYPE html>
 <html>
@@ -473,7 +548,7 @@ This example is based on the Mapbox getting started
 <body>
 <div id="map"></div>
 <script>
-    mapboxgl.accessToken = 'NotNeeded';
+    mapboxgl.accessToken = 'your-access-token-here';
     var map = new mapboxgl.Map({
         container: 'map',                                 // container id
         style: 'https://www.mysite.com/tiles/style.json', // stylesheet location
@@ -485,6 +560,7 @@ This example is based on the Mapbox getting started
 </body>
 </html>
 ```
+
 
 The key changes from the Mapbox example are; that `mapboxgl.accessToken`
 must be defined but is not used as we are not connecting to the Mapbox
@@ -499,6 +575,7 @@ because all this information is contained within a stylesheet `.json`
 file. The full specification for the stylesheet can be found
 [here](https://docs.mapbox.com/mapbox-gl-js/style-spec/), but a
 simplified structure is shown below.
+
 
 ``` json
 {
@@ -611,6 +688,47 @@ map.on('load', function() {
   }
 });
 ```
+## Part 4: Tips other things to think about
+
+As vector tiles are so efficent in comparion to raster tiles, it is tempting to tread them like any other GIS file format. In a geojson or a geopackage is it common to have many attribute columns for each geometry. It is certainly possible to do this with vector tiles, but it must be done with care. 
+
+The main issue is that by default each tile is capped at 500 kB in size (though this can be adjusted). This ensures fast downloading and rendering. Tippecanoe will remove small feaures from a tile to keep to the file size limit. This works really well for base maps, as you don't want to see every building when viewing a map of a whole country. And once you have zoomed in enough to see buildings, there are only a few that need to be downloaded and rendered.
+
+But this approach does not work so well for data, especially area-based data. In this case small areas disappearing or being coaled with larger areas can spoil a good piece of data visualisation. So to keep as many of your features visible as possible, you need to think of other ways to reduce the tile size.
+
+### Reducing the size of geometries
+
+Tippecanoe has a built in simplification options including:
+
+* --simplification=10 this can be set to a numerical value. You can go upto about 10 without noticing the loss in quality.
+* --drop-densest-as-needed removed small objects in a crowded tile, works well for point data
+* --coalesce-densest-as-needed merge small object in a crowded tile, works well for polygon data especially if you need continouse coverage coverage 
+
+
+### Reducing the size of attributes
+
+It is worth understanding how vector tiles store attribute data, as it is quite different to other GIS file formats. A [full description](https://docs.mapbox.com/vector-tiles/specification/#encoding-attributes) is available, but the key point is that each vector tile contains a lookup table of all the possible values an attribute can have, and each feature stores the keys to that lookup table.
+
+For example if you had a column of data in your geojson with the values `"house", "park", "house", "lake"` and another column `"10.5", "1234", "12.4","567"`. The vector tile would create a lookup table `house = 0, park = 1, lake = 2, 10.5 = 3, 1234 = 4, 12.4 = 5,567 = 6` and then the geometries] would simply store the keys `0,1,2,1` and `3,4,5,6`. This system is excellent for storing text-based tags, when you have a small number of possible values which are used again and again (e.g. in a basemap). But this system is terrible for numeric data or any type of data where each value is used only once.
+
+So you need to minimise the number attributes you have and the variability in your attributes. Things you can try:
+
+1. Calculate an attribute on the fly: Instead of storing population, area, and population density in the vector tile, just store population and area and calculate the population density when required. See [example](https://docs.mapbox.com/mapbox-gl-js/example/visualize-population-density/).
+
+2. Round numeric data to increase the chance of numbers being reused: Decimal numbers are likely to be unique (e.g. 23.4564), but integers are more frequently reused. Do you really need the full number, or would a rounded one do just as well?
+
+3. Store numbers like scientific notation: Suppose you have two columns of values one that ranges from 1 - 100 and another that ranges from 1,000 to 100,000. There is little chance of repeated values. But if you scale them by powers of ten and round to an appropriate number of significant figures (e.g both 123,456 or 12.345 become 1234) you increase the chance of the same value being reused across different columns. In the javascript you can simply multiply each column back to its original size.
+
+4. Replace numeric data with categorical data. If you are making a choropleth map then you only need to know which colour to use, not the exact value. This won't work if you also want to be able to click on an area to get the exact value.
+
+For all these methods you can easily test their effectiveness on your data by checking for the total number of unique values in your data. The lower the better.
+
+
+
+
+
+
+
 
 ## References:
 
