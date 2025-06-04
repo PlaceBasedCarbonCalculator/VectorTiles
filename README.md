@@ -421,6 +421,11 @@ tippecanoe -zg --output-to-directory=mytiles --drop-densest-as-needed --no-tile-
 
 #### Checking your vector tiles
 
+#### (Reccomended) Checking pmtiles
+
+PMtiles can be viewed using the [PMTiles Viewer](https://pmtiles.io/#)
+
+#### (Optional) Checking mbtiles
 
 If you have QGIS installed the [Vector Tiles
 Reader](https://github.com/geometalab/Vector-Tiles-Reader-QGIS-Plugin/)
@@ -468,40 +473,33 @@ We can do this as follows:
 
 When hosting vector tiles on your own server, you have two main choices:
 
-1.  Install a specialist tile hosting server such as TileServer and use
+1.  (Recommended) Hosting a single `.pmtiles` file.
+2.  Install a specialist tile hosting server such as TileServer and use
     a `.mbtiles`
-2.  Generate individual `.pbf` tiles and then upload them to a folder on
+3.  Generate individual `.pbf` tiles and then upload them to a folder on
     your server.
 
-### Hosting using a mbtiles file
+### (Reccomended) Hosting using a pmtiles file
 
-
-See documentation at <https://openmaptiles.org/docs/>
-
-### Hosting a folder of individual titles
-
-This method is very simple and does not require the installation of
+This recommended method is very simple and does not require the installation of
 specialist software on your server. This means you can even host the
 tiles on file servers such as Amazon S3. It should also improve the
 hosting performance as your server does not need to do any processing,
-simply serve the requested files. The downside is that you get no
-support or helpful features included in your chosen software. It is also
-less suited to hosting datasets that you expect to update regularly.
+simply serve the requested files.
 
-#### Uploading your tiles
+#### Uploading your pmtiles
 
-Once you have created your tiles simply upload them to your server using
-an FTP client such as [Filezilla](https://filezilla-project.org/). We
-suggest you create a `tiles` folder on your server and keep each tileset
-in its own subfolder.
-
+Once you have created your `.pmtiles` file simply upload it to your server.
+Often you can use FTP client such as [Filezilla](https://filezilla-project.org/). 
+But check the documentation of you host as there may be other methods. We
+suggest you create a `tiles` folder to keep your `.pmtiles` files
 
 #### Modifying HTML Headers
 
 There are two reasons you may want to modify HTML headers.
 
-1.  To enable gzip compression (see above)
-2.  To enable
+1.  (Required) To enable range requests
+2.  (Optional) To enable
     [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing)
 
 
@@ -525,6 +523,57 @@ Common use cases are:
 /index.html
 	/tiles
 		.htaccess
+		basemap.pmtiles
+		mytiles1.pmtiles
+		mytiles2.pmtiles
+```
+
+**Example `.htaccess` file**
+```
+Header add Access-Control-Allow-Origin "*"
+Header add Access-Control-Allow-Methods: "GET"
+Header set Accept-Ranges bytes
+```
+If your `.htaccess` file is not working you may need to [enable this feature](https://stackoverflow.com/questions/12202387/htaccess-not-working-apache) in your server config file.
+
+Note that setting Header add Access-Control-Allow-Origin to "*" means any website can view your tiles. You may wish to opt to specify which sites can access your tiles.
+
+### (Optional) Hosting using a mbtiles file
+
+See documentation at <https://openmaptiles.org/docs/>
+
+### (Optional) Hosting a folder of individual titles
+
+This method is very simple and does not require the installation of
+specialist software on your server. This means you can even host the
+tiles on file servers such as Amazon S3. It should also improve the
+hosting performance as your server does not need to do any processing,
+simply serve the requested files. The downside is that you get no
+support or helpful features included in your chosen software. It is also
+less suited to hosting datasets that you expect to update regularly.
+
+#### Uploading your tiles
+
+Once you have created your tiles simply upload them to your server using
+an FTP client such as [Filezilla](https://filezilla-project.org/). We
+suggest you create a `tiles` folder on your server and keep each tileset
+in its own subfolder.
+
+
+#### Modifying HTML Headers
+
+There are two reasons you may want to modify HTML headers.
+
+1.  To enable gzip compression (see above)
+2.  To enable
+    [CORS](https://en.wikipedia.org/wiki/Cross-origin_resource_sharing) (See above)
+
+
+**Example folder structure** 
+```
+/index.html
+	/tiles
+		.htaccess
 		/basemap
 		/mytiles1
 		/mytiles2
@@ -536,18 +585,12 @@ Header add Access-Control-Allow-Origin "*"
 Header add Access-Control-Allow-Methods: "GET"
 Header set Content-Encoding: gzip
 ```
-If your `.htaccess` file is not working you may need to [enable this feature](https://stackoverflow.com/questions/12202387/htaccess-not-working-apache) in your server config file.
-
-Note that setting Header add Access-Control-Allow-Origin to "*" means any website can view your tiles. You may wish to opt to specify which sites can access your tiles.
 
 ### Hosting fonts
 
 If your map includes text tables, such as road or country names, you will need to provide the fonts you wish to use. You can download a selection of fonts [from this repo](https://github.com/ITSLeeds/VectorTiles/releases) and upload them to your server in a folder called `fonts`. You will need to unzip the files and upload them in the file structure shown below.
 
 
-If your `.htaccess` file is not working you may need to [enable this
-feature](https://stackoverflow.com/questions/12202387/htaccess-not-working-apache)
-in your server config file.
 
 ### Hosting Fonts
 
@@ -574,7 +617,7 @@ files and uploaded them in the file structure shown below.
 
 
 There are many ways to view vector tiles, but when building a website,
-we recommend using Mapbox GL JS. Mapbox GL JS is a Javascript library
+we recommend using MapLibre GL JS. MapLibre GL JS is a Javascript library
 which takes advantage of [WebGL](https://en.wikipedia.org/wiki/WebGL)
 this means the library can use both the GPU and the CPU to render your
 maps rather than just the CPU as was the case with older libraries such
@@ -582,21 +625,16 @@ as [leaflet](https://leafletjs.com/). The use of the GPU means that you
 can render larger and more complex datasets such as 3D maps, animations,
 and other advanced features.
 
-Although Mapbox GL JS is open source, it is maintained by Mapbox and
-most of the documentation steers you towards using Mapbox’s paid
-services. However, it works equally well with vector tiles hosted from
-any location.
-
-Mapbox GL JS has good
-[documentation](https://docs.mapbox.com/mapbox-gl-js/api/) and lots of
-[examples](https://docs.mapbox.com/mapbox-gl-js/examples/) to this
+MapLibre GL JS has good
+[documentation](https://maplibre.org/maplibre-gl-js/docs/) and lots of
+[examples](https://maplibre.org/maplibre-gl-js/docs/examples/) to this
 tutorial will focus on the changes required for hosting your own vector
 tiles and supporting multiple vector tile layers.
 
 <img src='images/vis_flowchart.png'/>
 
-This example is based on the Mapbox getting started
-[example](https://docs.mapbox.com/mapbox-gl-js/example/simple-map/).
+This example is based on the MapLibre quickstart started
+[example](https://maplibre.org/maplibre-gl-js/docs/).
 
 
 ``` html
@@ -606,8 +644,8 @@ This example is based on the Mapbox getting started
 <meta charset="utf-8" />
 <title>Display a map</title>
 <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-<script src="https://api.mapbox.com/mapbox-gl-js/v1.9.0/mapbox-gl.js"></script>
-<link href="https://api.mapbox.com/mapbox-gl-js/v1.9.0/mapbox-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@^5.6.0/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@^5.6.0/dist/maplibre-gl.css" rel="stylesheet" />
 <style>
     body { margin: 0; padding: 0; }
     #map { position: absolute; top: 0; bottom: 0; width: 100%; }
@@ -616,8 +654,7 @@ This example is based on the Mapbox getting started
 <body>
 <div id="map"></div>
 <script>
-    mapboxgl.accessToken = 'your-access-token-here';
-    var map = new mapboxgl.Map({
+    var map = new maplibregl.Map({
         container: 'map',                                 // container id
         style: 'https://www.mysite.com/tiles/style.json', // stylesheet location
         center: [-1, 53],                                 // starting position [lng, lat]
@@ -628,12 +665,6 @@ This example is based on the Mapbox getting started
 </body>
 </html>
 ```
-
-
-The key changes from the Mapbox example are; that `mapboxgl.accessToken`
-must be defined but is not used as we are not connecting to the Mapbox
-services, and the location of the `style.json` has been changed to a URL
-on your server.
 
 ### Constructing the style.json file
 
@@ -758,9 +789,9 @@ map.on('load', function() {
 ```
 ## Part 4: Tips other things to think about
 
-As vector tiles are so efficent in comparion to raster tiles, it is tempting to tread them like any other GIS file format. In a geojson or a geopackage is it common to have many attribute columns for each geometry. It is certainly possible to do this with vector tiles, but it must be done with care. 
+As vector tiles are so efficient in comparison to raster tiles, it is tempting to tread them like any other GIS file format. In a geojson or a geopackage is it common to have many attribute columns for each geometry. It is certainly possible to do this with vector tiles, but it must be done with care. 
 
-The main issue is that by default each tile is capped at 500 kB in size (though this can be adjusted). This ensures fast downloading and rendering. Tippecanoe will remove small feaures from a tile to keep to the file size limit. This works really well for base maps, as you don't want to see every building when viewing a map of a whole country. And once you have zoomed in enough to see buildings, there are only a few that need to be downloaded and rendered.
+The main issue is that by default each tile is capped at 500 kB in size (though this can be adjusted). This ensures fast downloading and rendering. Tippecanoe will remove small features from a tile to keep to the file size limit. This works really well for base maps, as you don't want to see every building when viewing a map of a whole country. And once you have zoomed in enough to see buildings, there are only a few that need to be downloaded and rendered.
 
 But this approach does not work so well for data, especially area-based data. In this case small areas disappearing or being coaled with larger areas can spoil a good piece of data visualisation. So to keep as many of your features visible as possible, you need to think of other ways to reduce the tile size.
 
@@ -790,13 +821,6 @@ So you need to minimise the number attributes you have and the variability in yo
 4. Replace numeric data with categorical data. If you are making a choropleth map then you only need to know which colour to use, not the exact value. This won't work if you also want to be able to click on an area to get the exact value.
 
 For all these methods you can easily test their effectiveness on your data by checking for the total number of unique values in your data. The lower the better.
-
-
-
-
-
-
-
 
 ## References:
 
