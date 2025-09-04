@@ -159,7 +159,7 @@ and Linux.
 ### PMtiles - The new kid on the block
 
 Vector tiles came to prominence with the Mapbox vector tiles specification and 
-the `.mbtiles` format. However the mapox implementation has a downside, you can
+the `.mbtiles` format. However the Mapbox implementation has a downside, you can
 either:
 
 1. Host a single `.mbtiles` file using specialist tile hosting software
