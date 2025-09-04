@@ -164,7 +164,7 @@ either:
 
 1. Host a single `.mbtiles` file using specialist tile hosting software
 2. Host millions of tiny `.pbf` files on any file server. But you may be charged
-a small per file fee for by you web host for each file, and any updates would 
+a small per file fee by you web host for each file uploaded, and any updates would 
 require a re-upload of millions of files.
 
 **Note** many file hosts (Google Cloud, AWS, Azure etc.) charge transfer fees. 
