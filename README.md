@@ -18,8 +18,8 @@ explains how to do this using completely free software and avoiding
 licencing or subscription fees.
 
 In this tutorial, we will cover going from a source geographic file
-format to viewing tiles on your website using Mapbox GL JS. To achieve
-this, we will only use free open source tools provided by Mapbox and
+format to viewing tiles on your website using MapLibre. To achieve
+this, we will only use free open source tools provided by MapLibre and
 others. The documentation, we feel requires some improvement for someone
 to accomplish this, hence this blog post.
 
